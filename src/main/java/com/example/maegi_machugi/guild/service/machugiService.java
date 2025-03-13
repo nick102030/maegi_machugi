@@ -110,13 +110,17 @@ public class machugiService {
         for (int i = 0; i < guildMemberList.size(); i++)
             randomNum.add(i+1);
         Collections.shuffle(randomNum);
-        
+
         /* 제대로 섞였나 확인
         System.out.println(guildMemberList.size());
         System.out.println(randomNum);
          */
 
-        for (int i = 0; i < numOfCharacter; i++) {
+        /*
+        사용자가 선택한 numOfCharacter가 길드원 수보다 많으면 안되므로
+        만약 사용자가 길드원수보다 많은 수를 입력했다면 자동으로 길드원 수 만큼만 로딩하도록
+         */
+        for (int i = 0; i < Math.min(numOfCharacter, guildMemberList.size()); i++) {
             try{
                 Thread.sleep(500);
                 characterDTOList.add(getUserINFO(guildMemberList.get(randomNum.get(i))));
