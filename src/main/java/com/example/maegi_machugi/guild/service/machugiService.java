@@ -10,10 +10,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 
 @Service
@@ -103,15 +100,26 @@ public class machugiService {
         return null;
     }
 
-    public List<characterDTO> getGuildCharacterList(String guild_name, String world_name) {
+    public List<characterDTO> getGuildCharacterList(String guild_name, String world_name, int numOfCharacter) {
         String oguild_id = getGuildId(guild_name, world_name);
         List<String> guildMemberList = getGuildMemberList(oguild_id);
         List<characterDTO> characterDTOList = new ArrayList<>();
 
-        for (int i = 0; i < 2; i++) {
+        //랜덤한 팀원 고르기 위한 랜덤 배열 선언
+        List<Integer> randomNum = new ArrayList<>();
+        for (int i = 0; i < guildMemberList.size(); i++)
+            randomNum.add(i+1);
+        Collections.shuffle(randomNum);
+        
+        /* 제대로 섞였나 확인
+        System.out.println(guildMemberList.size());
+        System.out.println(randomNum);
+         */
+
+        for (int i = 0; i < numOfCharacter; i++) {
             try{
-                Thread.sleep(1000);
-                characterDTOList.add(getUserINFO(guildMemberList.get(i)));
+                Thread.sleep(500);
+                characterDTOList.add(getUserINFO(guildMemberList.get(randomNum.get(i))));
                 if (i % 3 == 0) Thread.sleep(500);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
