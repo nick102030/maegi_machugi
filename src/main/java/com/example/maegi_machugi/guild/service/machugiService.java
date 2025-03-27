@@ -2,10 +2,14 @@ package com.example.maegi_machugi.guild.service;
 
 import com.example.maegi_machugi.guild.dto.characterDTO;
 import com.example.maegi_machugi.guild.dto.guildResponse;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Value;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -24,111 +28,175 @@ public class machugiService {
     }
 
     //길드명을 통한 oguild_id 받아오기
-    public String getGuildId(String guild_name, String world_name) {
-        guildResponse response = webClient.get()
+    public Mono<ResponseEntity<guildResponse>> getGuildId(String guild_name, String world_name) {
+        return webClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("maplestory/v1/guild/id")
                         .queryParam("guild_name", guild_name)
                         .queryParam("world_name", world_name)
                         .build())
                 .header("x-nxopen-api-key", API_KEY)
-                .retrieve()
-                .bodyToMono(guildResponse.class)
-                .block();
-        return Objects.requireNonNull(response).getOguild_id();
+                .exchangeToMono(clientResponse -> {
+                    //System.out.println("STATUS CODE: " + clientResponse.statusCode());
+                    if (clientResponse.statusCode().is2xxSuccessful()) {
+                        return clientResponse.bodyToMono(String.class)
+                                .flatMap(body -> {
+                                    //System.out.println("RESPONSE BODY: " + body);
+                                    try {
+                                        ObjectMapper mapper = new ObjectMapper();
+                                        guildResponse result = mapper.readValue(body, guildResponse.class);
+                                        return Mono.just(ResponseEntity.status(clientResponse.statusCode()).body(result));
+                                    } catch (Exception e) {
+                                        return Mono.error(new RuntimeException("Guild ID JSON 파싱 실패", e));
+                                    }
+                                });
+                    } else {
+                        return clientResponse.bodyToMono(String.class)
+                                .flatMap(errorBody -> {
+                                    //System.out.println("RESPONSE BODY: " + errorBody);
+                                    return Mono.error(new ResponseStatusException(clientResponse.statusCode(), "길드명을 정확하게 입력해 주세요."));
+                                });
+                    }
+                })
+                .onErrorResume(e ->
+                        Mono.just(ResponseEntity
+                                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                                .body(null))
+                );
     }
 
     //oguild_id를 통한 길드원 목록 리스트 받아오기
-    public List<String> getGuildMemberList(String oguild_id) {
-        Map<String, Object> response = webClient.get()
-                .uri(uriBuilder -> uriBuilder
+    public Flux<String> getGuildMemberList(String oguild_id) {
+        return webClient.get().uri(uriBuilder -> uriBuilder
                         .path("/maplestory/v1/guild/basic")
                         .queryParam("oguild_id", oguild_id)
                         .build())
                 .header("x-nxopen-api-key", API_KEY)
-                .retrieve()
-                .bodyToMono(Map.class)
-                .block();
-
-        if (response != null && response.containsKey("guild_member"))
-            return (List<String>) response.get("guild_member");
-        return List.of();
+                .exchangeToMono(response -> {
+                    //System.out.println("STATUS CODE: " + response.statusCode());
+                    if (response.statusCode().is2xxSuccessful()) {
+                        return response.bodyToMono(String.class)
+                                .flatMap(body -> {
+                                    //System.out.println("RESPONSE BODY: " + body);
+                                    try {
+                                        ObjectMapper mapper = new ObjectMapper();
+                                        Map<String, Object> map = mapper.readValue(body, Map.class);
+                                        return Mono.just(map);
+                                    } catch (Exception e) {
+                                        return Mono.error(new RuntimeException("JSON 파싱 실패", e));
+                                    }
+                                });
+                    } else {
+                        return response.bodyToMono(String.class)
+                                .flatMap(errorBody -> {
+                                    //System.out.println("RESPONSE BODY: " + errorBody);
+                                    return Mono.error(new ResponseStatusException(response.statusCode(), "길드원 목록 조회 실패"));
+                                });
+                    }
+                })
+                .flatMapMany(map -> {
+                    Object rawMembers = map.get("guild_member");
+                    if (rawMembers instanceof List<?> rawList) {
+                        try {
+                            List<String> names = new ArrayList<>();
+                            for (Object obj : rawList) {
+                                names.add(obj.toString());
+                            }
+                            return Flux.fromIterable(names);
+                        } catch (Exception e) {
+                            return Flux.error(new RuntimeException("길드원 이름 추출 실패", e));
+                        }
+                    } else {
+                        return Flux.error(new RuntimeException("Unexpected guild_member structure: " + rawMembers));
+                    }
+                });
     }
 
     //캐릭터명을 통한 캐릭터 정보 받아오기
-    public characterDTO getUserINFO(String character_name) {
-        characterDTO response = webClient.get()
+    public Mono<characterDTO> getUserINFO(String character_name) {
+        return webClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/maplestory/v1/id")
                         .queryParam("character_name", character_name)
                         .build())
                 .header("x-nxopen-api-key", API_KEY)
-                .retrieve()
-                .bodyToMono(characterDTO.class)
-                .block();
-
-        if (response != null) {
-            System.out.println("유저 정보 불러오기 성공");
-            return getCharacterImage(response.getOcid(), character_name);
-        }
-
-        return null;
+                .exchangeToMono(clientResponse -> {
+                    return clientResponse.bodyToMono(String.class)
+                        .doOnNext(body -> {
+                            //System.out.println("STATUS CODE: " + clientResponse.statusCode());
+                            //System.out.println("RESPONSE BODY: " + body);
+                        })
+                        .flatMap(body -> {
+                            if (clientResponse.statusCode().is2xxSuccessful()) {
+                                try {
+                                    ObjectMapper mapper = new ObjectMapper();
+                                    characterDTO dto = mapper.readValue(body, characterDTO.class);
+                                    return Mono.just(dto);
+                                } catch (Exception e) {
+                                    return Mono.error(new RuntimeException("User info JSON 파싱 실패", e));
+                                }
+                            } else {
+                                return Mono.error(new ResponseStatusException(clientResponse.statusCode(), "캐릭터 정보 조회 실패"));
+                            }
+                        });
+                })
+                .flatMap(dto -> getCharacterImage(dto.getOcid(), character_name));
     }
 
     //ocid 통한 캐릭터 이미지 url 조회 및 DTO 생성
-    public characterDTO getCharacterImage(String ocid, String character_name) {
-        var response = webClient.get()
+    public Mono<characterDTO> getCharacterImage(String ocid, String character_name) {
+        return webClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/maplestory/v1/character/basic")
                         .queryParam("ocid", ocid)
                         .build())
                 .header("x-nxopen-api-key", API_KEY)
-                .retrieve()
-                .bodyToMono(Map.class)
-                .block();
+                .exchangeToMono(clientResponse -> {
+                    //System.out.println("STATUS CODE: " + clientResponse.statusCode());
+                    if (clientResponse.statusCode().is2xxSuccessful()) {
+                        return clientResponse.bodyToMono(String.class)
+                                .flatMap(body -> {
+                                    //System.out.println("RESPONSE BODY: " + body);
+                                    try {
+                                        ObjectMapper mapper = new ObjectMapper();
+                                        Map<String, Object> responseMap = mapper.readValue(body, Map.class);
+                                        String imageURL = (String) responseMap.get("character_image");
 
-        if (response != null && response.containsKey("character_image")) {
-            String imageURL = (String) response.get("character_image");
-            characterDTO characterInfo = new characterDTO();
-            characterInfo.setOcid(ocid);
-            characterInfo.setCharacterName(character_name);
-            characterInfo.setImageURL(imageURL);
-            System.out.println("DTO 생성 성공");
-            return characterInfo;
-        }
+                                        characterDTO dto = new characterDTO();
+                                        dto.setOcid(ocid);
+                                        dto.setCharacterName(character_name);
+                                        dto.setImageURL(imageURL);
 
-        return null;
+                                        return Mono.just(dto);
+                                    } catch (Exception e) {
+                                        return Mono.error(new RuntimeException("JSON 파싱 오류", e));
+                                    }
+                                });
+                    } else {
+                        return clientResponse.bodyToMono(String.class)
+                                .flatMap(errorBody -> {
+                                    //System.out.println("RESPONSE BODY: " + errorBody);
+                                    return Mono.error(new ResponseStatusException(clientResponse.statusCode(), "캐릭터 이미지 조회 실패"));
+                                });
+                    }
+                });
     }
 
-    public List<characterDTO> getGuildCharacterList(String guild_name, String world_name, int numOfCharacter) {
-        String oguild_id = getGuildId(guild_name, world_name);
-        List<String> guildMemberList = getGuildMemberList(oguild_id);
-        List<characterDTO> characterDTOList = new ArrayList<>();
-
-        //랜덤한 팀원 고르기 위한 랜덤 배열 선언
-        List<Integer> randomNum = new ArrayList<>();
-        for (int i = 0; i < guildMemberList.size(); i++)
-            randomNum.add(i+1);
-        Collections.shuffle(randomNum);
-
-        /* 제대로 섞였나 확인
-        System.out.println(guildMemberList.size());
-        System.out.println(randomNum);
-         */
-
-        /*
-        사용자가 선택한 numOfCharacter가 길드원 수보다 많으면 안되므로
-        만약 사용자가 길드원수보다 많은 수를 입력했다면 자동으로 길드원 수 만큼만 로딩하도록
-         */
-        for (int i = 0; i < Math.min(numOfCharacter, guildMemberList.size()); i++) {
-            try{
-                Thread.sleep(500);
-                characterDTOList.add(getUserINFO(guildMemberList.get(randomNum.get(i))));
-                if (i % 3 == 0) Thread.sleep(500);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }
-        return characterDTOList;
+    public Flux<characterDTO> getGuildCharacterList(String guild_name, String world_name, int numOfCharacter) {
+        return getGuildId(guild_name, world_name)
+                .flatMapMany(response -> {
+                    if (response.getBody() == null || response.getBody().getOguild_id() == null) {
+                        return Flux.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, "길드명, 월드명을 정확히 입력해 주세요"));
+                    }
+                    return getGuildMemberList(response.getBody().getOguild_id());
+                })
+                .collectList()
+                .flatMapMany(memberList -> {
+                    Collections.shuffle(memberList);
+                    List<String> selectedMembers = memberList.subList(0, Math.min(numOfCharacter, memberList.size()));
+                    return Flux.fromIterable(selectedMembers)
+                            .delayElements(Duration.ofMillis(500))
+                            .flatMap(this::getUserINFO);
+                });
     }
 }
