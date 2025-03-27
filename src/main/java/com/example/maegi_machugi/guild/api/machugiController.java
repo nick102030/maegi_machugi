@@ -30,10 +30,4 @@ public class machugiController {
             @RequestParam(name = "numOfCharacter") int numOfCharacter) {
         return machugiService.getGuildCharacterList(guild_name, world_name, numOfCharacter);
     }
-
-    @GetMapping("/test")
-    public Mono<List<String>> getMember(
-            @RequestParam(name = "oguild_id") String oguild_id) {
-        return machugiService.getGuildMemberList(oguild_id).collectList();
-    }
 }
