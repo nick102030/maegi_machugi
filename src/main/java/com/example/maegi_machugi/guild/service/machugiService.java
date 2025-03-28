@@ -186,7 +186,7 @@ public class machugiService {
         return getGuildId(guild_name, world_name)
                 .flatMapMany(response -> {
                     if (response.getBody() == null || response.getBody().getOguild_id() == null) {
-                        return Flux.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, "길드명, 월드명을 정확히 입력해 주세요"));
+                        return Flux.error(new ResponseStatusException(HttpStatus.BAD_REQUEST, "길드명, 월드명을 확인해 주세요"));
                     }
                     return getGuildMemberList(response.getBody().getOguild_id());
                 })
