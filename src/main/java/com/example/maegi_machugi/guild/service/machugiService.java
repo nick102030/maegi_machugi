@@ -20,7 +20,7 @@ import java.util.*;
 @Service
 public class machugiService {
 
-    //git action 테스트
+    //git action 테스트2
     private static final String API_KEY = System.getenv("API_KEY");
     private static WebClient webClient;
 
