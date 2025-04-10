@@ -22,7 +22,7 @@ configurations {
 repositories {
 	mavenCentral()
 }
-jar {
+bootJar {
 	archiveFileName = 'app.jar'
 }
 
