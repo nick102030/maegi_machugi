@@ -30,6 +30,9 @@ jobs:
         source: "build/libs/*.jar"
         target: "~/app/"
 
+    - name: Clean old JARs
+      run: rm -f /home/ubuntu/app/build/libs/*.jar
+
     - name: Restart Spring Boot on EC2
       uses: appleboy/ssh-action@v0.1.7
       with:
@@ -38,4 +41,4 @@ jobs:
         key: ${{ secrets.EC2_KEY }}
         script: |
           pkill -f 'java -jar' || true
-          nohup java -jar /home/ubuntu/app/build/libs/*.jar > /home/ubuntu/app/log.txt 2>&1 &
+          nohup java -jar /home/ubuntu/app/build/libs/app.jar > /home/ubuntu/app/log.txt 2>&1 &
