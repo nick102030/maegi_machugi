@@ -185,6 +185,7 @@ public class machugiService {
     }
 
     public Flux<characterDTO> getGuildCharacterList(String guild_name, String world_name, int numOfCharacter) {
+        System.out.println("getGuildCharacterList");
         return getGuildId(guild_name, world_name)
                 .flatMapMany(response -> {
                     if (response.getBody() == null || response.getBody().getOguild_id() == null) {
