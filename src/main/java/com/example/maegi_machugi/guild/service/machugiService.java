@@ -20,7 +20,6 @@ import java.util.*;
 @Service
 public class machugiService {
 
-    //git action 테스트3
     private static final String API_KEY = System.getenv("API_KEY");
     private static WebClient webClient;
 
@@ -185,7 +184,7 @@ public class machugiService {
     }
 
     public Flux<characterDTO> getGuildCharacterList(String guild_name, String world_name, int numOfCharacter) {
-        System.out.println("getGuildCharacterList");
+        System.out.println("길드원 목록을 불러옵니다...");
         return getGuildId(guild_name, world_name)
                 .flatMapMany(response -> {
                     if (response.getBody() == null || response.getBody().getOguild_id() == null) {
