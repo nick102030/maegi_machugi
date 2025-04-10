@@ -19,7 +19,7 @@ jobs:
         distribution: 'temurin'
 
     - name: Build with Gradle
-      run: ./gradlew clean build -x test
+      run: ./gradlew clean bootJar -x test
 
     - name: Remove old JAR from EC2
       uses: appleboy/ssh-action@v0.1.7
