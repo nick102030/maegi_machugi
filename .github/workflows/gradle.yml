@@ -27,7 +27,7 @@ jobs:
         host: ${{ secrets.EC2_HOST }}
         username: ${{ secrets.EC2_USER }}
         key: ${{ secrets.EC2_KEY }}
-        source: "build/libs/*.jar"
+        source: "build/libs/app.jar"
         target: "~/app/"
 
     - name: Clean old JARs
