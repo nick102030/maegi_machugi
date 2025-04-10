@@ -57,3 +57,4 @@ jobs:
         key: ${{ secrets.EC2_KEY }}
         script: |
           bash -lc "nohup java -jar /home/ubuntu/app/build/libs/app.jar > /home/ubuntu/app.log 2>&1 &"
+          
