@@ -21,6 +21,14 @@ jobs:
     - name: Build with Gradle
       run: ./gradlew clean build -x test
 
+    - name: Remove old JAR from EC2
+      uses: appleboy/ssh-action@v0.1.7
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.EC2_KEY }}
+        script: rm -f /home/ubuntu/app/build/libs/app.jar
+
     - name: Copy JAR to EC2
       uses: appleboy/scp-action@v0.1.4
       with:
@@ -30,8 +38,6 @@ jobs:
         source: "build/libs/app.jar"
         target: "~/app/"
 
-    - name: Clean old JARs
-      run: rm -f /home/ubuntu/app/build/libs/*.jar
 
     - name: Restart Spring Boot on EC2
       uses: appleboy/ssh-action@v0.1.7
@@ -39,6 +45,6 @@ jobs:
         host: ${{ secrets.EC2_HOST }}
         username: ${{ secrets.EC2_USER }}
         key: ${{ secrets.EC2_KEY }}
-        script: |
+        script: | 
           pkill -f 'java -jar' || true
-          bash -lc "nohup java -jar /home/ubuntu/app/build/libs/app.jar > /home/ubuntu/app/log.txt 2>&1 &"
+          nohup java -jar /home/ubuntu/app/build/libs/app.jar > /home/ubuntu/app/log.txt 2>&1 &
