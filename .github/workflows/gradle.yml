@@ -45,7 +45,7 @@ jobs:
         host: ${{ secrets.EC2_HOST }}
         username: ${{ secrets.EC2_USER }}
         key: ${{ secrets.EC2_KEY }}
-        script: bash -lc "pkill -f "java -jar" || true"
+        script: pkill -f "java -jar" || true
       
 
     - name: Start Spring Boot on EC2
@@ -54,4 +54,4 @@ jobs:
         host: ${{ secrets.EC2_HOST }}
         username: ${{ secrets.EC2_USER }}
         key: ${{ secrets.EC2_KEY }}
-        script: bash -lc "nohup java -jar /home/ubuntu/app/build/libs/app.jar > /home/ubuntu/app.log 2>&1 &"
+        script: nohup java -jar /home/ubuntu/app/build/libs/app.jar > /home/ubuntu/app.log 2>&1 &
